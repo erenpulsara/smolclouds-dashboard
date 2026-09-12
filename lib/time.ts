@@ -14,3 +14,10 @@ export function ago(iso: string | undefined): string {
   if (days < 30) return `${days}d ago`;
   return new Date(iso).toISOString().slice(0, 10);
 }
+
+/** The full timestamp, for a `title` beside a relative one. */
+export function exact(iso: string | undefined): string {
+  if (!iso) return "no requests recorded";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "unknown" : date.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+}

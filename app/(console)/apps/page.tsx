@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { DeploymentList } from "@/components/DeploymentList";
-import { EmptyState, Panel, Rule } from "@/components/ui";
+import Link from "next/link";
+import { DeploymentList, type DeploymentRow } from "@/components/DeploymentList";
+import { FirstDeploy } from "@/components/FirstDeploy";
+import { Diagnostic, PageHeader } from "@/components/ui";
 import { requirePilot } from "@/lib/gate";
 import { listDeployments, RouterError, type Deployment } from "@/lib/router";
 import { site } from "@/lib/site";
+import { ago, exact } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Apps" };
 export const dynamic = "force-dynamic";
@@ -20,47 +23,61 @@ export default async function AppsPage() {
   } catch (error) {
     failure =
       error instanceof RouterError
-        ? `${site.apiBase}/deployments answered ${error.status}`
-        : `${site.apiBase} did not answer`;
+        ? `It answered ${error.status} for GET /deployments.`
+        : "It did not answer in time.";
   }
 
   const awake = deployments.filter((item) => item.state === "awake").length;
+  const rows: DeploymentRow[] = deployments.map((deployment) => ({
+    ...deployment,
+    agoLabel: ago(deployment.lastRequestAt),
+    exactLabel: exact(deployment.lastRequestAt),
+  }));
 
   return (
     <>
-      <Rule
+      <PageHeader
         label="apps"
+        title="Your apps"
+        description="Every app deployed to this account, and whether it is awake right now. Apps sleep when nothing is calling them and wake on the next request."
         right={
-          <span className="text-xs text-faint tabular-nums">
-            {deployments.length} total · {awake} awake
-          </span>
+          failure || deployments.length === 0 ? null : (
+            <span className="tabular-nums">
+              {deployments.length} total · {awake} awake
+            </span>
+          )
         }
       />
 
       {failure ? (
-        <Panel className="p-6">
-          <p className="text-sm text-dim">✕ router unreachable</p>
-          <p className="mt-3 text-xs leading-relaxed text-muted">
-            {failure}. The console reads deployments server-side, so this is the router itself, not
-            a browser or CORS problem. Check that the router accepts the console&apos;s API token —
-            see <span className="text-dim">docs/ROUTER_PATCH.md</span>.
-          </p>
-        </Panel>
+        <Diagnostic
+          from={site.console}
+          to={site.apiBase.replace(/^https?:\/\//, "")}
+          title="The console could not reach the router"
+          action={
+            <Link
+              href="/apps"
+              className="inline-block border border-text bg-text px-4 py-2 text-[11px] text-bg transition-colors hover:bg-dim"
+            >
+              try again
+            </Link>
+          }
+        >
+          {failure} Deployments are read from the server, not your browser, so this is the router
+          itself — not a network or CORS problem on this page. Your apps keep running and nothing
+          was changed.
+        </Diagnostic>
       ) : deployments.length === 0 ? (
-        <EmptyState title="no apps yet">
-          Deploy one with the CLI, then it shows up here.
-          <br />
-          <span className="mt-3 block text-dim">smolclouds deploy .</span>
-        </EmptyState>
+        <FirstDeploy />
       ) : (
         <>
-          <div className="flex gap-x-6 border-x border-t border-line bg-surface-2 px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-faint">
+          <div className="flex gap-x-6 border-x border-t border-line bg-surface-2 py-2.5 pl-6 pr-5 text-[10px] uppercase tracking-[0.22em] text-ghost">
             <span className="flex-1">app</span>
-            <span className="w-24">state</span>
+            <span className="w-[6.5rem]">state</span>
             <span className="w-28 text-right">last request</span>
-            <span className="w-32" />
+            <span className="w-24 shrink-0" />
           </div>
-          <DeploymentList deployments={deployments} />
+          <DeploymentList deployments={rows} />
         </>
       )}
     </>

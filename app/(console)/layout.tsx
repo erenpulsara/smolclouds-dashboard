@@ -12,7 +12,7 @@ export default async function ConsoleLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-screen flex-col">
       <Nav />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-14">{children}</main>
       <StatusBar email={user.email} />
     </div>
   );
